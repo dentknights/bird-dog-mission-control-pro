@@ -1,8 +1,58 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Bird Dog Brand Colors - Cyberpunk/Cyan theme */
+  --bd-cyan: #00d4ff;
+  --bd-cyan-dark: #00a8cc;
+  --bd-cyan-glow: rgba(0, 212, 255, 0.4);
+  --bd-purple: #a855f7;
+  --bd-purple-dark: #7c3aed;
+  --bd-emerald: #10b981;
+  --bd-amber: #f59e0b;
+  --bd-red: #ef4444;
+  
+  /* Dark Theme Base */
+  --bd-bg-primary: #0a0a0f;
+  --bd-bg-secondary: #111118;
+  --bd-bg-tertiary: #1a1a24;
+  --bd-bg-elevated: #22222e;
+  --bd-bg-card: #15151d;
+  
+  /* Borders */
+  --bd-border-color: rgba(255, 255, 255, 0.08);
+  --bd-border-hover: rgba(255, 255, 255, 0.15);
+  --bd-border-accent: rgba(0, 212, 255, 0.3);
+  
+  /* Text */
+  --bd-text-primary: #ffffff;
+  --bd-text-secondary: rgba(255, 255, 255, 0.7);
+  --bd-text-muted: rgba(255, 255, 255, 0.5);
+  --bd-text-disabled: rgba(255, 255, 255, 0.3);
+  
+  /* shadcn overrides */
+  --background: #0a0a0f;
+  --foreground: #ffffff;
+  --card: #15151d;
+  --card-foreground: #ffffff;
+  --popover: #1a1a24;
+  --popover-foreground: #ffffff;
+  --primary: #00d4ff;
+  --primary-foreground: #000000;
+  --secondary: #1a1a24;
+  --secondary-foreground: #ffffff;
+  --muted: #22222e;
+  --muted-foreground: rgba(255, 255, 255, 0.5);
+  --accent: #1a1a24;
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.08);
+  --ring: #00d4ff;
+  --radius: 0.5rem;
 }
 
 @theme inline {
@@ -10,17 +60,230 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  
+  /* Bird Dog Custom Colors */
+  --color-bd-cyan: var(--bd-cyan);
+  --color-bd-purple: var(--bd-purple);
+  --color-bd-emerald: var(--bd-emerald);
+  --color-bd-amber: var(--bd-amber);
+  --color-bd-bg-primary: var(--bd-bg-primary);
+  --color-bd-bg-secondary: var(--bd-bg-secondary);
+  --color-bd-bg-tertiary: var(--bd-bg-tertiary);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--border);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bd-bg-primary);
+  color: var(--bd-text-primary);
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bd-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bd-bg-elevated);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--bd-border-hover);
+}
+
+/* Selection */
+::selection {
+  background: var(--bd-cyan-glow);
+  color: var(--bd-text-primary);
+}
+
+/* Focus styles */
+*:focus-visible {
+  outline: 2px solid var(--bd-cyan);
+  outline-offset: 2px;
+}
+
+/* Animations */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 5px var(--bd-cyan-glow); }
+  50% { box-shadow: 0 0 20px var(--bd-cyan-glow), 0 0 40px var(--bd-cyan-glow); }
+}
+
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Glass effect */
+.glass {
+  background: rgba(17, 17, 24, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, var(--bd-cyan) 0%, var(--bd-purple) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glow effects */
+.glow-cyan {
+  box-shadow: 0 0 10px var(--bd-cyan-glow), 0 0 20px var(--bd-cyan-glow);
+}
+
+.glow-border {
+  border-color: var(--bd-cyan);
+  box-shadow: 0 0 10px var(--bd-cyan-glow);
+}
+
+/* Grid pattern background */
+.grid-pattern {
+  background-image: 
+    linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
+/* Status badges */
+.status-badge {
+  @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
+}
+
+.status-badge-draft {
+  @apply bg-zinc-800 text-zinc-400 border border-zinc-700;
+}
+
+.status-badge-script_ready {
+  @apply bg-blue-500/10 text-blue-400 border border-blue-500/20;
+}
+
+.status-badge-generating {
+  @apply bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse;
+}
+
+.status-badge-assembling {
+  @apply bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 animate-pulse;
+}
+
+.status-badge-complete {
+  @apply bg-emerald-500/10 text-emerald-400 border border-emerald-500/20;
+}
+
+.status-badge-error {
+  @apply bg-red-500/10 text-red-400 border border-red-500/20;
+}
+
+/* Card hover effect */
+.card-hover {
+  @apply transition-all duration-200 ease-out;
+}
+
+.card-hover:hover {
+  @apply border-[var(--bd-cyan)]/30;
+  box-shadow: 0 0 20px var(--bd-cyan-glow);
+}
+
+/* Button variants */
+.btn-primary {
+  @apply bg-[var(--bd-cyan)] text-black font-medium;
+}
+
+.btn-primary:hover {
+  @apply bg-[var(--bd-cyan-dark)];
+  box-shadow: 0 0 15px var(--bd-cyan-glow);
+}
+
+/* Input styling */
+.bd-input {
+  @apply bg-[var(--bd-bg-tertiary)] border-[var(--bd-border-color)] text-white placeholder:text-[var(--bd-text-muted)];
+}
+
+.bd-input:focus {
+  @apply border-[var(--bd-cyan)] ring-1 ring-[var(--bd-cyan)];
+}
+
+/* Panel styling */
+.bd-panel {
+  @apply bg-[var(--bd-bg-card)] border border-[var(--bd-border-color)] rounded-lg;
+}
+
+/* Section headers */
+.section-header {
+  @apply flex items-center gap-2 text-lg font-semibold text-white mb-4;
+}
+
+.section-header::before {
+  content: '';
+  @apply w-1 h-5 bg-[var(--bd-cyan)] rounded-full;
 }
