@@ -26,7 +26,7 @@ export function Sidebar() {
   const setSidebarOpen = useAppStore((s) => s.setSidebarOpen);
 
   return (
-    <TooltipProvider delayDuration={0}>
+    <TooltipProvider>
       <aside
         className={cn(
           'h-screen bg-[var(--bd-bg-secondary)] border-r border-[var(--bd-border-color)] flex flex-col transition-all duration-300',
@@ -56,7 +56,7 @@ export function Sidebar() {
             
             return (
               <Tooltip key={item.href}>
-                <TooltipTrigger asChild>
+                <TooltipTrigger>
                   <Link
                     href={item.href}
                     className={cn(
@@ -83,7 +83,7 @@ export function Sidebar() {
         {/* Settings & Collapse */}
         <div className="p-2 border-t border-[var(--bd-border-color)]">
           <Tooltip>
-            <TooltipTrigger asChild>
+            <TooltipTrigger>
               <Link
                 href="/settings"
                 className={cn(

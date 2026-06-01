@@ -28,14 +28,12 @@ export function Header() {
         </Button>
         
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-              <Avatar className="h-9 w-9 border-2 border-[var(--bd-border-color)]">
-                <AvatarFallback className="bg-[var(--bd-bg-tertiary)] text-[var(--bd-cyan)]">
-                  <User className="h-4 w-4" />
-                </AvatarFallback>
-              </Avatar>
-            </Button>
+          <DropdownMenuTrigger>
+            <Avatar className="h-9 w-9 border-2 border-[var(--bd-border-color)] cursor-pointer">
+              <AvatarFallback className="bg-[var(--bd-bg-tertiary)] text-[var(--bd-cyan)]">
+                <User className="h-4 w-4" />
+              </AvatarFallback>
+            </Avatar>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="bg-[var(--bd-bg-secondary)] border-[var(--bd-border-color)]">
             <DropdownMenuItem className="text-[var(--bd-text-secondary)] hover:text-white hover:bg-[var(--bd-bg-tertiary)]">

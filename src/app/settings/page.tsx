@@ -110,7 +110,7 @@ export default function SettingsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Language</Label>
-                  <Select value={settings.language} onValueChange={(v) => setSettings({ ...settings, language: v })}>
+                  <Select value={settings.language} onValueChange={(v) => setSettings({ ...settings, language: v || 'en' })}>
                     <SelectTrigger className="bd-input">
                       <SelectValue />
                     </SelectTrigger>
@@ -123,7 +123,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Timezone</Label>
-                  <Select value={settings.timezone} onValueChange={(v) => setSettings({ ...settings, timezone: v })}>
+                  <Select value={settings.timezone} onValueChange={(v) => setSettings({ ...settings, timezone: v || 'UTC' })}>
                     <SelectTrigger className="bd-input">
                       <SelectValue />
                     </SelectTrigger>

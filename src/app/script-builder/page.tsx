@@ -134,7 +134,7 @@ export default function ScriptBuilderPage() {
               </div>
               <div>
                 <Label className="text-[var(--bd-text-secondary)]">Assign to Episode</Label>
-                <Select value={selectedEpisode} onValueChange={setSelectedEpisode}>
+                <Select value={selectedEpisode} onValueChange={(v) => setSelectedEpisode(v || '')}>
                   <SelectTrigger className="bd-input mt-2">
                     <SelectValue placeholder="Select episode..." />
                   </SelectTrigger>
