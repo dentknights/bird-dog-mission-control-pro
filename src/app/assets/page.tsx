@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { Upload, Image, Music, Video, Trash2, Download, Grid, List } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Upload, Image, Music, Video, Trash2, Download, Grid, List, Loader2 } from 'lucide-react';
+import { useAssets, useUploadAsset, useDeleteAsset } from '@/hooks/use-assets';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,19 +10,16 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { Asset } from '@/types';
 
-const mockImages: Asset[] = [
-  { id: '1', type: 'image', filename: 'character_brenda_ref.jpg', url: '/assets/1.jpg', created_at: '2024-01-15', size: 1024000 },
-  { id: '2', type: 'image', filename: 'location_clearlake.jpg', url: '/assets/2.jpg', created_at: '2024-01-16', size: 2048000 },
-];
-
-const mockAudio: Asset[] = [
-  { id: '3', type: 'audio', filename: 'brenda_voice_sample.mp3', url: '/assets/3.mp3', created_at: '2024-01-17', size: 512000 },
-  { id: '4', type: 'audio', filename: 'tweaker_dialogue.wav', url: '/assets/4.wav', created_at: '2024-01-18', size: 1024000 },
-];
-
 export default function AssetsPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const { data: images, isLoading: imagesLoading } = useAssets('images');
+  const { data: audio, isLoading: audioLoading } = useAssets('audio');
+  const { data: videos, isLoading: videosLoading } = useAssets('video');
+  const uploadAsset = useUploadAsset();
+  const deleteAsset = useDeleteAsset();
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -32,10 +30,20 @@ export default function AssetsPage() {
     setDragOver(false);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = (e: React.DragEvent, type: 'image' | 'audio') => {
     e.preventDefault();
     setDragOver(false);
-    // Handle file upload
+    const files = Array.from(e.dataTransfer.files);
+    files.forEach(file => {
+      uploadAsset.mutate({ file, type });
+    });
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'audio') => {
+    const files = Array.from(e.target.files || []);
+    files.forEach(file => {
+      uploadAsset.mutate({ file, type });
+    });
   };
 
   const formatSize = (bytes?: number) => {
@@ -83,12 +91,26 @@ export default function AssetsPage() {
         }`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
+        onDrop={(e) => handleDrop(e, 'image')}
+        onClick={() => fileInputRef.current?.click()}
+        style={{ cursor: 'pointer' }}
       >
-        <CardContent className="flex flex-col items-center justify-center py-12">
-          <Upload className="h-12 w-12 text-[var(--bd-text-muted)] mb-4" />
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="image/*,audio/*,video/*"
+          className="hidden"
+          onChange={(e) => handleFileSelect(e, 'image')}
+        />
+        <CardContent className="flex flex-col items-center justify-center py-12 cursor-pointer">
+          {uploadAsset.isPending ? (
+            <Loader2 className="h-12 w-12 text-[var(--bd-cyan)] animate-spin mb-4" />
+          ) : (
+            <Upload className="h-12 w-12 text-[var(--bd-text-muted)] mb-4" />
+          )}
           <p className="text-[var(--bd-text-secondary)] text-lg mb-2">
-            Drop files here to upload
+            {uploadAsset.isPending ? 'Uploading...' : 'Drop files here to upload'}
           </p>
           <p className="text-[var(--bd-text-muted)] text-sm">
             Supports images (JPG, PNG), audio (MP3, WAV), and video (MP4)
@@ -105,7 +127,7 @@ export default function AssetsPage() {
           >
             <Image className="h-4 w-4 mr-2" />
             Images
-            <Badge className="ml-2 bg-[var(--bd-bg-tertiary)]">{mockImages.length}</Badge>
+            <Badge className="ml-2 bg-[var(--bd-bg-tertiary)]">{images?.length || 0}</Badge>
           </TabsTrigger>
           <TabsTrigger 
             value="audio"
@@ -113,7 +135,7 @@ export default function AssetsPage() {
           >
             <Music className="h-4 w-4 mr-2" />
             Audio
-            <Badge className="ml-2 bg-[var(--bd-bg-tertiary)]">{mockAudio.length}</Badge>
+            <Badge className="ml-2 bg-[var(--bd-bg-tertiary)]">{audio?.length || 0}</Badge>
           </TabsTrigger>
           <TabsTrigger 
             value="video"
@@ -121,41 +143,65 @@ export default function AssetsPage() {
           >
             <Video className="h-4 w-4 mr-2" />
             Video
-            <Badge className="ml-2 bg-[var(--bd-bg-tertiary)]">0</Badge>
+            <Badge className="ml-2 bg-[var(--bd-bg-tertiary)]">{videos?.length || 0}</Badge>
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="images" className="mt-6">
-          {viewMode === 'grid' ? (
+          {imagesLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="h-10 w-10 animate-spin text-[var(--bd-cyan)]" />
+            </div>
+          ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {mockImages.map((asset) => (
+              {images?.map((asset) => (
                 <Card 
                   key={asset.id}
                   className="bg-[var(--bd-bg-card)] border-[var(--bd-border-color)] group overflow-hidden"
                 >
                   <div className="aspect-square bg-[var(--bd-bg-tertiary)] flex items-center justify-center">
-                    <Image className="h-12 w-12 text-[var(--bd-text-muted)]" />
+                    {asset.url ? (
+                      <img src={asset.url} alt={asset.filename} className="w-full h-full object-cover" />
+                    ) : (
+                      <Image className="h-12 w-12 text-[var(--bd-text-muted)]" />
+                    )}
                   </div>
                   <CardContent className="p-3">
                     <p className="text-sm text-white truncate">{asset.filename}</p>
                     <p className="text-xs text-[var(--bd-text-muted)]">{formatSize(asset.size)}</p>
                     <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" className="h-7 w-7">
+                      <a 
+                        href={asset.url} 
+                        download
+                        className="inline-flex items-center justify-center h-7 w-7 rounded-md hover:bg-[var(--bd-bg-tertiary)]"
+                      >
                         <Download className="h-3 w-3" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400">
+                      </a>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-7 w-7 text-red-400"
+                        onClick={() => deleteAsset.mutate({ category: 'images', filename: asset.filename })}
+                        disabled={deleteAsset.isPending}
+                      >
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
                   </CardContent>
                 </Card>
               ))}
+              {!images?.length && (
+                <div className="col-span-full text-center py-12 text-[var(--bd-text-muted)]">
+                  <Image className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No images yet</p>
+                </div>
+              )}
             </div>
           ) : (
             <Card className="bg-[var(--bd-bg-card)] border-[var(--bd-border-color)]">
               <ScrollArea className="h-[400px]">
                 <div className="divide-y divide-[var(--bd-border-color)]">
-                  {mockImages.map((asset) => (
+                  {images?.map((asset) => (
                     <div 
                       key={asset.id}
                       className="flex items-center justify-between p-4 hover:bg-[var(--bd-bg-tertiary)]"
@@ -170,10 +216,20 @@ export default function AssetsPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon">
+                        <a 
+                          href={asset.url} 
+                          download
+                          className="inline-flex items-center justify-center h-9 w-9 rounded-md hover:bg-[var(--bd-bg-tertiary)]"
+                        >
                           <Download className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="text-red-400">
+                        </a>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="text-red-400"
+                          onClick={() => deleteAsset.mutate({ category: 'images', filename: asset.filename })}
+                          disabled={deleteAsset.isPending}
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -186,48 +242,117 @@ export default function AssetsPage() {
         </TabsContent>
 
         <TabsContent value="audio" className="mt-6">
-          <Card className="bg-[var(--bd-bg-card)] border-[var(--bd-border-color)]">
-            <ScrollArea className="h-[400px]">
-              <div className="divide-y divide-[var(--bd-border-color)]">
-                {mockAudio.map((asset) => (
-                  <div 
-                    key={asset.id}
-                    className="flex items-center justify-between p-4 hover:bg-[var(--bd-bg-tertiary)]"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Music className="h-8 w-8 text-[var(--bd-purple)]" />
-                      <div>
-                        <p className="text-white">{asset.filename}</p>
-                        <p className="text-xs text-[var(--bd-text-muted)]">
-                          {formatSize(asset.size)} • {new Date(asset.created_at).toLocaleDateString()}
-                        </p>
+          {audioLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="h-10 w-10 animate-spin text-[var(--bd-cyan)]" />
+            </div>
+          ) : (
+            <Card className="bg-[var(--bd-bg-card)] border-[var(--bd-border-color)]">
+              <ScrollArea className="h-[400px]">
+                <div className="divide-y divide-[var(--bd-border-color)]">
+                  {audio?.map((asset) => (
+                    <div 
+                      key={asset.id}
+                      className="flex items-center justify-between p-4 hover:bg-[var(--bd-bg-tertiary)]"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Music className="h-8 w-8 text-[var(--bd-purple)]" />
+                        <div>
+                          <p className="text-white">{asset.filename}</p>
+                          <p className="text-xs text-[var(--bd-text-muted)]">
+                            {formatSize(asset.size)} • {new Date(asset.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <a 
+                          href={asset.url} 
+                          download
+                          className="inline-flex items-center justify-center h-9 w-9 rounded-md hover:bg-[var(--bd-bg-tertiary)]"
+                        >
+                          <Download className="h-4 w-4" />
+                        </a>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="text-red-400"
+                          onClick={() => deleteAsset.mutate({ category: 'audio', filename: asset.filename })}
+                          disabled={deleteAsset.isPending}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon">
-                        <Download className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="text-red-400">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                  ))}
+                  {!audio?.length && (
+                    <div className="text-center py-12 text-[var(--bd-text-muted)]">
+                      <Music className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No audio files yet</p>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
-          </Card>
+                  )}
+                </div>
+              </ScrollArea>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="video" className="mt-6">
-          <Card className="bg-[var(--bd-bg-card)] border-[var(--bd-border-color)]">
-            <CardContent className="flex flex-col items-center justify-center py-20">
-              <Video className="h-16 w-16 text-[var(--bd-text-muted)] mb-4" />
-              <p className="text-[var(--bd-text-muted)]">No videos yet</p>
-              <p className="text-sm text-[var(--bd-text-secondary)] mt-2">
-                Rendered episodes will appear here
-              </p>
-            </CardContent>
-          </Card>
+          {videosLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="h-10 w-10 animate-spin text-[var(--bd-cyan)]" />
+            </div>
+          ) : (
+            <Card className="bg-[var(--bd-bg-card)] border-[var(--bd-border-color)]">
+              {videos?.length ? (
+                <ScrollArea className="h-[400px]">
+                  <div className="divide-y divide-[var(--bd-border-color)]">
+                    {videos.map((asset) => (
+                      <div 
+                        key={asset.id}
+                        className="flex items-center justify-between p-4 hover:bg-[var(--bd-bg-tertiary)]"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Video className="h-8 w-8 text-[var(--bd-cyan)]" />
+                          <div>
+                            <p className="text-white">{asset.filename}</p>
+                            <p className="text-xs text-[var(--bd-text-muted)]">
+                              {formatSize(asset.size)} • {new Date(asset.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <a 
+                            href={asset.url} 
+                            download
+                            className="inline-flex items-center justify-center h-9 w-9 rounded-md hover:bg-[var(--bd-bg-tertiary)]"
+                          >
+                            <Download className="h-4 w-4" />
+                          </a>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-red-400"
+                            onClick={() => deleteAsset.mutate({ category: 'video', filename: asset.filename })}
+                            disabled={deleteAsset.isPending}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              ) : (
+                <CardContent className="flex flex-col items-center justify-center py-20">
+                  <Video className="h-16 w-16 text-[var(--bd-text-muted)] mb-4" />
+                  <p className="text-[var(--bd-text-muted)]">No videos yet</p>
+                  <p className="text-sm text-[var(--bd-text-secondary)] mt-2">
+                    Rendered episodes will appear here
+                  </p>
+                </CardContent>
+              )}
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>

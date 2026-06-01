@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Rocket, Cpu, Mic, Play, Settings, AlertTriangle, 
   CheckCircle, Loader2, Zap, Film, Volume2, Package,
-  Terminal, Activity
+  Terminal, Activity, Pause, XCircle, RefreshCw
 } from 'lucide-react';
+import { useSystemStatus, useWorkers, useQueue, useBatchOperations } from '@/hooks/use-system';
+import { useEpisodes } from '@/hooks/use-episodes';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -22,47 +24,73 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import apiClient from '@/lib/api';
 
 export default function MissionControlPage() {
   const [activeTab, setActiveTab] = useState('batch');
-  const [isProcessing, setIsProcessing] = useState(false);
   const [logs, setLogs] = useState<string[]>([
     '[10:23:45] System ready',
     '[10:24:12] GPU worker connected',
     '[10:25:03] Queue initialized',
   ]);
+  
+  // Batch config
+  const [batchConfig, setBatchConfig] = useState({
+    episodes: 'current',
+    operations: ['video'] as string[],
+    priority: 'normal' as const,
+    parallel_workers: 2,
+  });
+  
+  // Real data
+  const { data: systemStatus } = useSystemStatus();
+  const { data: workers } = useWorkers();
+  const { data: queue } = useQueue();
+  const { data: episodes } = useEpisodes();
+  const { startBatch, pauseBatch, cancelBatch } = useBatchOperations();
 
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
     setLogs(prev => [`[${timestamp}] ${message}`, ...prev].slice(0, 50));
   };
 
-  const handleBatchVideo = () => {
-    setIsProcessing(true);
-    addLog('Starting batch video generation...');
-    setTimeout(() => {
-      addLog('Batch complete: 3 videos generated');
-      setIsProcessing(false);
-    }, 3000);
+  const handleStartBatch = async () => {
+    try {
+      addLog('Starting batch operations...');
+      await startBatch.mutateAsync(batchConfig);
+      addLog('Batch job started successfully');
+    } catch (error: any) {
+      addLog(`Error: ${error.message || 'Failed to start batch'}`);
+    }
   };
 
-  const handleBatchAudio = () => {
-    setIsProcessing(true);
-    addLog('Starting batch audio generation...');
-    setTimeout(() => {
-      addLog('Batch complete: 5 audio files generated');
-      setIsProcessing(false);
-    }, 3000);
+  const handlePauseBatch = async () => {
+    try {
+      await pauseBatch.mutateAsync();
+      addLog('Batch operations paused');
+    } catch (error: any) {
+      addLog(`Error: ${error.message || 'Failed to pause batch'}`);
+    }
   };
 
-  const handleFinalAssembly = () => {
-    setIsProcessing(true);
-    addLog('Starting final assembly...');
-    setTimeout(() => {
-      addLog('Assembly complete: Episode rendered');
-      setIsProcessing(false);
-    }, 5000);
+  const handleCancelBatch = async () => {
+    try {
+      await cancelBatch.mutateAsync();
+      addLog('Batch operations cancelled');
+    } catch (error: any) {
+      addLog(`Error: ${error.message || 'Failed to cancel batch'}`);
+    }
   };
+
+  // Auto-refresh logs from queue
+  useEffect(() => {
+    if (queue?.length) {
+      const processing = queue.filter(j => j.status === 'processing');
+      if (processing.length > 0) {
+        addLog(`Processing ${processing.length} jobs in queue`);
+      }
+    }
+  }, [queue]);
 
   return (
     <div className="space-y-6">
@@ -111,22 +139,16 @@ export default function MissionControlPage() {
             <Card className="bg-[var(--bd-bg-card)] border-[var(--bd-border-color)]">
               <CardHeader>
                 <CardTitle className="text-sm uppercase text-[var(--bd-text-muted)]">
-                  Batch Queue
+                  Batch Configuration
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <AlertTriangle className="h-4 w-4 text-amber-400" />
-                    <span className="text-sm text-amber-400">Warning</span>
-                  </div>
-                  <p className="text-xs text-[var(--bd-text-muted)]">
-                    Batch operations will process multiple scenes. Ensure all settings are correct.
-                  </p>
-                </div>
                 <div className="space-y-2">
                   <Label className="text-[var(--bd-text-secondary)] text-sm">Episodes to Process</Label>
-                  <Select defaultValue="current">
+                  <Select 
+                    value={batchConfig.episodes}
+                    onValueChange={(v) => setBatchConfig({ ...batchConfig, episodes: v || 'current' })}
+                  >
                     <SelectTrigger className="bd-input">
                       <SelectValue />
                     </SelectTrigger>
@@ -137,6 +159,46 @@ export default function MissionControlPage() {
                       <SelectItem value="ready">Ready to Render</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label className="text-[var(--bd-text-secondary)] text-sm">Priority</Label>
+                  <Select 
+                    value={batchConfig.priority}
+                    onValueChange={(v) => setBatchConfig({ ...batchConfig, priority: (v as typeof batchConfig.priority) || 'normal' })}
+                  >
+                    <SelectTrigger className="bd-input">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[var(--bd-bg-secondary)] border-[var(--bd-border-color)]">
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="normal">Normal</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="urgent">Urgent</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label className="text-[var(--bd-text-secondary)] text-sm">Parallel Workers</Label>
+                  <Input 
+                    type="number" 
+                    min={1} 
+                    max={10}
+                    value={batchConfig.parallel_workers}
+                    onChange={(e) => setBatchConfig({ ...batchConfig, parallel_workers: parseInt(e.target.value) || 1 })}
+                    className="bd-input"
+                  />
+                </div>
+
+                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertTriangle className="h-4 w-4 text-amber-400" />
+                    <span className="text-sm text-amber-400">Warning</span>
+                  </div>
+                  <p className="text-xs text-[var(--bd-text-muted)]">
+                    Batch operations will process multiple scenes. Ensure all settings are correct.
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -164,56 +226,74 @@ export default function MissionControlPage() {
                     </div>
                   </div>
                   <Button 
-                    onClick={handleBatchVideo}
-                    disabled={isProcessing}
+                    onClick={handleStartBatch}
+                    disabled={startBatch.isPending}
                     className="bg-cyan-500 hover:bg-cyan-400 text-black"
                   >
-                    {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Start'}
+                    {startBatch.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Start'}
                   </Button>
                 </div>
 
-                {/* Generate Audio */}
-                <div className="flex items-center justify-between p-4 bg-[var(--bd-bg-tertiary)] rounded-lg border border-[var(--bd-border-color)]">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
-                      <Volume2 className="h-5 w-5 text-purple-400" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-white">Generate All Audio</div>
-                      <div className="text-sm text-[var(--bd-text-muted)]">
-                        Synthesize voice for all dialogue
-                      </div>
+                {/* Queue Status */}
+                <div className="p-4 bg-[var(--bd-bg-tertiary)] rounded-lg border border-[var(--bd-border-color)]">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="font-medium text-white">Queue Status</div>
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-[var(--bd-bg-secondary)]">
+                        {queue?.length || 0} jobs
+                      </Badge>
                     </div>
                   </div>
-                  <Button 
-                    onClick={handleBatchAudio}
-                    disabled={isProcessing}
-                    className="bg-purple-500 hover:bg-purple-400 text-black"
-                  >
-                    {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Start'}
-                  </Button>
-                </div>
-
-                {/* Final Assembly */}
-                <div className="flex items-center justify-between p-4 bg-[var(--bd-bg-tertiary)] rounded-lg border border-[var(--bd-border-color)]">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                      <Package className="h-5 w-5 text-emerald-400" />
+                  
+                  {queue && queue.length > 0 ? (
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                      {queue.slice(0, 5).map((job) => (
+                        <div key={job.id} className="flex items-center justify-between text-sm">
+                          <span className="text-[var(--bd-text-muted)] truncate">{job.id.slice(0, 8)}...</span>
+                          <div className="flex items-center gap-2">
+                            <Badge 
+                              className={
+                                job.status === 'complete' ? 'bg-emerald-500/20 text-emerald-400' :
+                                job.status === 'processing' ? 'bg-amber-500/20 text-amber-400' :
+                                job.status === 'error' ? 'bg-red-500/20 text-red-400' :
+                                'bg-zinc-500/20 text-zinc-400'
+                              }
+                            >
+                              {job.status}
+                            </Badge>
+                            {job.progress > 0 && (
+                              <span className="text-xs text-[var(--bd-text-muted)]">{job.progress}%</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    <div>
-                      <div className="font-medium text-white">Final Assembly</div>
-                      <div className="text-sm text-[var(--bd-text-muted)]">
-                        Combine all assets into final video
-                      </div>
-                    </div>
+                  ) : (
+                    <p className="text-sm text-[var(--bd-text-muted)]">No jobs in queue</p>
+                  )}
+                  
+                  <div className="flex items-center gap-2 mt-4">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="border-[var(--bd-border-color)]"
+                      onClick={handlePauseBatch}
+                      disabled={pauseBatch.isPending}
+                    >
+                      <Pause className="h-4 w-4 mr-1" />
+                      Pause
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="border-red-500/50 text-red-400 hover:bg-red-500/10"
+                      onClick={handleCancelBatch}
+                      disabled={cancelBatch.isPending}
+                    >
+                      <XCircle className="h-4 w-4 mr-1" />
+                      Cancel
+                    </Button>
                   </div>
-                  <Button 
-                    onClick={handleFinalAssembly}
-                    disabled={isProcessing}
-                    className="bg-emerald-500 hover:bg-emerald-400 text-black"
-                  >
-                    {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Start'}
-                  </Button>
                 </div>
               </CardContent>
             </Card>

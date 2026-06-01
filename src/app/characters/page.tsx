@@ -1,9 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Loader2, Users, Mic, Trash2, Edit, User } from 'lucide-react';
-import { charactersApi } from '@/lib/api';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Plus, Loader2, Users, Mic, Trash2 } from 'lucide-react';
+import { useCharacters, useCreateCharacter, useDeleteCharacter } from '@/hooks/use-characters';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -26,17 +25,28 @@ import {
 } from '@/components/ui/select';
 import type { Character } from '@/types';
 
-const roleColors = {
+const roleColors: Record<string, string> = {
   protagonist: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
   antagonist: 'bg-red-500/10 text-red-400 border-red-500/20',
   supporting: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
   extra: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
 };
 
+const getRoleColor = (role?: string) => {
+  if (!role) return roleColors.supporting;
+  const normalizedRole = role.toLowerCase().trim();
+  if (roleColors[normalizedRole]) return roleColors[normalizedRole];
+  // Fallback for invalid roles - use description-based color
+  if (normalizedRole.includes('antagonist') || normalizedRole.includes('villain')) return roleColors.antagonist;
+  if (normalizedRole.includes('protagonist') || normalizedRole.includes('main')) return roleColors.protagonist;
+  return roleColors.supporting;
+};
+
 export default function CharactersPage() {
-  const queryClient = useQueryClient();
+  const { data: characters, isLoading } = useCharacters();
+  const createCharacter = useCreateCharacter();
+  const deleteCharacter = useDeleteCharacter();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingCharacter, setEditingCharacter] = useState<Character | null>(null);
   const [newCharacter, setNewCharacter] = useState({
     name: '',
     description: '',
@@ -45,35 +55,16 @@ export default function CharactersPage() {
     personality_traits: [] as string[],
   });
 
-  const { data: characters, isLoading } = useQuery({
-    queryKey: ['characters'],
-    queryFn: () => charactersApi.getAll(),
-  });
-
-  const createCharacter = useMutation({
-    mutationFn: charactersApi.create,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['characters'] });
-      setIsDialogOpen(false);
-      setNewCharacter({
-        name: '',
-        description: '',
-        role: 'supporting',
-        voice_name: '',
-        personality_traits: [],
-      });
-    },
-  });
-
-  const deleteCharacter = useMutation({
-    mutationFn: charactersApi.delete,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['characters'] });
-    },
-  });
-
   const handleCreate = async () => {
     await createCharacter.mutateAsync(newCharacter);
+    setIsDialogOpen(false);
+    setNewCharacter({
+      name: '',
+      description: '',
+      role: 'supporting',
+      voice_name: '',
+      personality_traits: [],
+    });
   };
 
   return (
@@ -128,9 +119,9 @@ export default function CharactersPage() {
                     <div>
                       <CardTitle className="text-lg text-white">{character.name}</CardTitle>
                       <Badge 
-                        className={`${roleColors[character.role as keyof typeof roleColors]} text-xs border mt-1`}
+                        className={`${getRoleColor(character.role)} text-xs border mt-1`}
                       >
-                        {character.role}
+                        {character.role || 'supporting'}
                       </Badge>
                     </div>
                   </div>
@@ -138,16 +129,9 @@ export default function CharactersPage() {
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="h-8 w-8 text-[var(--bd-text-muted)] hover:text-white"
-                      onClick={() => setEditingCharacter(character)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
                       className="h-8 w-8 text-[var(--bd-text-muted)] hover:text-red-400"
                       onClick={() => deleteCharacter.mutate(character.id)}
+                      disabled={deleteCharacter.isPending}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
