@@ -8,8 +8,8 @@ import {
   Film, Users, MessageSquare, Settings, ChevronRight, X, Edit2
 } from 'lucide-react';
 import { useEpisode, useUpdateEpisode } from '@/hooks/use-episodes';
-import { useCreateScene, useDeleteScene, useGenerateVideo } from '@/hooks/use-scenes';
-import { useCreateDialogue, useDeleteDialogue, useGenerateAudio } from '@/hooks/use-dialogue';
+import { useCreateScene, useDeleteScene, useUpdateScene, useGenerateVideo } from '@/hooks/use-scenes';
+import { useCreateDialogue, useDeleteDialogue, useUpdateDialogue, useGenerateAudio } from '@/hooks/use-dialogue';
 import { useCharacters } from '@/hooks/use-characters';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -44,8 +44,14 @@ export default function EpisodeDetailPage() {
   
   // Dialog states
   const [isSceneDialogOpen, setIsSceneDialogOpen] = useState(false);
+  const [isEditSceneDialogOpen, setIsEditSceneDialogOpen] = useState(false);
   const [isDialogueDialogOpen, setIsDialogueDialogOpen] = useState(false);
+  const [isEditDialogueDialogOpen, setIsEditDialogueDialogOpen] = useState(false);
   const [isCharacterDialogOpen, setIsCharacterDialogOpen] = useState(false);
+  
+  // Edit states
+  const [editingScene, setEditingScene] = useState<Scene | null>(null);
+  const [editingDialogue, setEditingDialogue] = useState<Dialogue | null>(null);
   
   // Form states
   const [newScene, setNewScene] = useState({
@@ -66,9 +72,11 @@ export default function EpisodeDetailPage() {
   // Mutations
   const createScene = useCreateScene();
   const deleteScene = useDeleteScene();
+  const updateScene = useUpdateScene();
   const generateVideo = useGenerateVideo();
   const createDialogue = useCreateDialogue();
   const deleteDialogue = useDeleteDialogue();
+  const updateDialogue = useUpdateDialogue();
   const generateAudio = useGenerateAudio();
   const updateEpisode = useUpdateEpisode();
 
@@ -94,8 +102,47 @@ export default function EpisodeDetailPage() {
 
   const handleAddCharacterToEpisode = async (characterId: string) => {
     if (!episode || !id) return;
-    await apiClient.post(`/api/episodes/${id}/characters`, { character_id: characterId });
+    await apiClient.post(`/episodes/${id}/characters`, { character_id: characterId });
     setIsCharacterDialogOpen(false);
+  };
+
+  const handleEditScene = (scene: Scene) => {
+    setEditingScene(scene);
+    setIsEditSceneDialogOpen(true);
+  };
+
+  const handleUpdateScene = async () => {
+    if (!editingScene) return;
+    await updateScene.mutateAsync({
+      id: editingScene.id,
+      data: {
+        title: editingScene.title,
+        location: editingScene.location,
+        setting_description: editingScene.setting_description,
+        target_duration: editingScene.target_duration,
+      },
+    });
+    setIsEditSceneDialogOpen(false);
+    setEditingScene(null);
+  };
+
+  const handleEditDialogue = (line: Dialogue) => {
+    setEditingDialogue(line);
+    setIsEditDialogueDialogOpen(true);
+  };
+
+  const handleUpdateDialogue = async () => {
+    if (!editingDialogue) return;
+    await updateDialogue.mutateAsync({
+      id: editingDialogue.id,
+      data: {
+        text: editingDialogue.text,
+        tone: editingDialogue.tone,
+        action: editingDialogue.action,
+      },
+    });
+    setIsEditDialogueDialogOpen(false);
+    setEditingDialogue(null);
   };
 
   if (isLoading) {
@@ -216,18 +263,31 @@ export default function EpisodeDetailPage() {
                           <span className="font-medium text-white">
                             {index + 1}. {scene.title || `Scene ${index + 1}`}
                           </span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteScene.mutate(scene.id);
-                            }}
-                            disabled={deleteScene.isPending}
-                          >
-                            <Trash2 className="h-3 w-3 text-red-500" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditScene(scene);
+                              }}
+                            >
+                              <Edit2 className="h-3 w-3 text-[var(--bd-cyan)]" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteScene.mutate(scene.id);
+                              }}
+                              disabled={deleteScene.isPending}
+                            >
+                              <Trash2 className="h-3 w-3 text-red-500" />
+                            </Button>
+                          </div>
                         </div>
                         <div className="text-xs text-[var(--bd-text-muted)] mt-1">
                           {scene.location || 'No location'} • {scene.target_duration}s
@@ -358,6 +418,14 @@ export default function EpisodeDetailPage() {
                             )}
                           </div>
                           <div className="flex items-center gap-1 ml-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => handleEditDialogue(line)}
+                            >
+                              <Edit2 className="h-3 w-3 text-[var(--bd-cyan)]" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -526,6 +594,152 @@ export default function EpisodeDetailPage() {
               Create Scene
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Scene Dialog */}
+      <Dialog open={isEditSceneDialogOpen} onOpenChange={setIsEditSceneDialogOpen}>
+        <DialogContent className="bg-[var(--bd-bg-secondary)] border-[var(--bd-border-color)] max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-white">Edit Scene</DialogTitle>
+          </DialogHeader>
+          {editingScene && (
+            <div className="space-y-4 pt-4">
+              <div>
+                <Label className="text-[var(--bd-text-secondary)]">Scene Title</Label>
+                <Input
+                  value={editingScene.title || ''}
+                  onChange={(e) => setEditingScene({ ...editingScene, title: e.target.value })}
+                  className="bd-input mt-2"
+                  placeholder="e.g., Opening at the Shop"
+                />
+              </div>
+              <div>
+                <Label className="text-[var(--bd-text-secondary)]">Location</Label>
+                <Input
+                  value={editingScene.location || ''}
+                  onChange={(e) => setEditingScene({ ...editingScene, location: e.target.value })}
+                  className="bd-input mt-2"
+                  placeholder="e.g., Hail Lions PDR Shop"
+                />
+              </div>
+              <div>
+                <Label className="text-[var(--bd-text-secondary)]">Description</Label>
+                <Textarea
+                  value={editingScene.setting_description || ''}
+                  onChange={(e) => setEditingScene({ ...editingScene, setting_description: e.target.value })}
+                  className="bd-input mt-2"
+                  placeholder="Describe the setting..."
+                  rows={3}
+                />
+              </div>
+              <div>
+                <Label className="text-[var(--bd-text-secondary)]">Target Duration (seconds)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={60}
+                  value={editingScene.target_duration || 5}
+                  onChange={(e) => setEditingScene({ ...editingScene, target_duration: parseInt(e.target.value) })}
+                  className="bd-input mt-2"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleUpdateScene}
+                  disabled={updateScene.isPending}
+                  className="flex-1 btn-primary"
+                >
+                  {updateScene.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Edit2 className="h-4 w-4 mr-2" />
+                  )}
+                  Save Changes
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditSceneDialogOpen(false)}
+                  className="bd-input"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialogue Dialog */}
+      <Dialog open={isEditDialogueDialogOpen} onOpenChange={setIsEditDialogueDialogOpen}>
+        <DialogContent className="bg-[var(--bd-bg-secondary)] border-[var(--bd-border-color)] max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-white">Edit Dialogue</DialogTitle>
+          </DialogHeader>
+          {editingDialogue && (
+            <div className="space-y-4 pt-4">
+              <div>
+                <Label className="text-[var(--bd-text-secondary)]">Line</Label>
+                <Textarea
+                  value={editingDialogue.text || ''}
+                  onChange={(e) => setEditingDialogue({ ...editingDialogue, text: e.target.value })}
+                  className="bd-input mt-2"
+                  placeholder="What does the character say..."
+                  rows={3}
+                />
+              </div>
+              <div>
+                <Label className="text-[var(--bd-text-secondary)]">Tone</Label>
+                <Select
+                  value={editingDialogue.tone || 'neutral'}
+                  onValueChange={(v) => setEditingDialogue({ ...editingDialogue, tone: v as any })}
+                >
+                  <SelectTrigger className="bd-input mt-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[var(--bd-bg-secondary)] border-[var(--bd-border-color)]">
+                    <SelectItem value="neutral">Neutral</SelectItem>
+                    <SelectItem value="happy">Happy</SelectItem>
+                    <SelectItem value="sad">Sad</SelectItem>
+                    <SelectItem value="angry">Angry</SelectItem>
+                    <SelectItem value="excited">Excited</SelectItem>
+                    <SelectItem value="sarcastic">Sarcastic</SelectItem>
+                    <SelectItem value="whisper">Whisper</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-[var(--bd-text-secondary)]">Action/Stage Direction</Label>
+                <Input
+                  value={editingDialogue.action || ''}
+                  onChange={(e) => setEditingDialogue({ ...editingDialogue, action: e.target.value })}
+                  className="bd-input mt-2"
+                  placeholder="e.g., scratches head nervously"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleUpdateDialogue}
+                  disabled={!editingDialogue.text || updateDialogue.isPending}
+                  className="flex-1 btn-primary"
+                >
+                  {updateDialogue.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Edit2 className="h-4 w-4 mr-2" />
+                  )}
+                  Save Changes
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditDialogueDialogOpen(false)}
+                  className="bd-input"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

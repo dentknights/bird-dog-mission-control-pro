@@ -4,9 +4,9 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { 
   Plus, Loader2, Clock, CheckCircle, 
-  Film, Users, ChevronRight 
+  Film, Users, ChevronRight, Pencil, Trash2
 } from 'lucide-react';
-import { useEpisodes, useCreateEpisode } from '@/hooks/use-episodes';
+import { useEpisodes, useCreateEpisode, useUpdateEpisode, useDeleteEpisode } from '@/hooks/use-episodes';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -42,7 +42,11 @@ const statusColors = {
 export default function EpisodesPage() {
   const { data: episodes, isLoading } = useEpisodes();
   const createEpisode = useCreateEpisode();
+  const updateEpisode = useUpdateEpisode();
+  const deleteEpisode = useDeleteEpisode();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingEpisode, setEditingEpisode] = useState<any>(null);
   const [newEpisode, setNewEpisode] = useState({
     title: '',
     description: '',
@@ -53,6 +57,25 @@ export default function EpisodesPage() {
     await createEpisode.mutateAsync(newEpisode);
     setIsDialogOpen(false);
     setNewEpisode({ title: '', description: '', target_duration: 60 });
+  };
+
+  const handleEdit = (episode: any) => {
+    setEditingEpisode(episode);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingEpisode) return;
+    await updateEpisode.mutateAsync({
+      id: editingEpisode.id,
+      data: {
+        title: editingEpisode.title,
+        description: editingEpisode.description,
+        target_duration: editingEpisode.target_duration,
+      },
+    });
+    setIsEditDialogOpen(false);
+    setEditingEpisode(null);
   };
 
   return (
@@ -97,52 +120,76 @@ export default function EpisodesPage() {
             {episodes?.map((episode) => {
               const StatusIcon = statusIcons[episode.status as keyof typeof statusIcons] || Clock;
               return (
-                <Link
+                <Card 
                   key={episode.id}
-                  href={`/episodes/${episode.id}`}
-                  className="group bd-panel p-5 card-hover block"
+                  className="bg-[var(--bd-bg-card)] border-[var(--bd-border-color)] card-hover group"
                 >
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="font-semibold text-white line-clamp-1 group-hover:text-[var(--bd-cyan)] transition-colors">
-                      {episode.title}
-                    </h3>
-                    <Badge className={`${statusColors[episode.status as keyof typeof statusColors]} text-xs border shrink-0`}>
-                      <StatusIcon className={`h-3 w-3 mr-1 ${(episode.status === 'generating' || episode.status === 'assembling') ? 'animate-spin' : ''}`} />
-                      {episode.status}
-                    </Badge>
-                  </div>
-                  
-                  <p className="text-sm text-[var(--bd-text-muted)] line-clamp-2 mb-4">
-                    {episode.description || 'No description'}
-                  </p>
-                  
-                  <div className="flex items-center justify-between text-xs text-[var(--bd-text-muted)]">
-                    <span>{new Date(episode.created_at).toLocaleDateString()}</span>
-                    <span>{episode.target_duration}s target</span>
-                  </div>
-                  
-                  {(episode.scenes?.length || episode.characters?.length) ? (
-                    <div className="mt-4 pt-3 border-t border-[var(--bd-border-color)] flex items-center gap-4">
-                      {episode.scenes && episode.scenes.length > 0 && (
-                        <span className="flex items-center gap-1 text-xs text-[var(--bd-text-muted)]">
-                          <Film className="h-3 w-3" />
-                          {episode.scenes.length} scenes
-                        </span>
-                      )}
-                      {episode.characters && episode.characters.length > 0 && (
-                        <span className="flex items-center gap-1 text-xs text-[var(--bd-text-muted)]">
-                          <Users className="h-3 w-3" />
-                          {episode.characters.length} characters
-                        </span>
-                      )}
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between mb-3">
+                      <Link href={`/episodes/${episode.id}`} className="flex-1">
+                        <h3 className="font-semibold text-white line-clamp-1 group-hover:text-[var(--bd-cyan)] transition-colors">
+                          {episode.title}
+                        </h3>
+                      </Link>
+                      <div className="flex items-center gap-1">
+                        <Badge className={`${statusColors[episode.status as keyof typeof statusColors]} text-xs border shrink-0 mr-2`}>
+                          <StatusIcon className={`h-3 w-3 mr-1 ${(episode.status === 'generating' || episode.status === 'assembling') ? 'animate-spin' : ''}`} />
+                          {episode.status}
+                        </Badge>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          className="h-7 w-7 text-[var(--bd-text-muted)] hover:text-[var(--bd-cyan)] opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => handleEdit(episode)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          className="h-7 w-7 text-[var(--bd-text-muted)] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => deleteEpisode.mutate(episode.id)}
+                          disabled={deleteEpisode.isPending}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
-                  ) : null}
-                  
-                  <div className="mt-3 flex items-center text-[var(--bd-cyan)] text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                    Edit Episode
-                    <ChevronRight className="h-4 w-4 ml-1" />
-                  </div>
-                </Link>
+                    
+                    <Link href={`/episodes/${episode.id}`}>
+                      <p className="text-sm text-[var(--bd-text-muted)] line-clamp-2 mb-4">
+                        {episode.description || 'No description'}
+                      </p>
+                      
+                      <div className="flex items-center justify-between text-xs text-[var(--bd-text-muted)]">
+                        <span>{new Date(episode.created_at).toLocaleDateString()}</span>
+                        <span>{episode.target_duration}s target</span>
+                      </div>
+                      
+                      {(episode.scenes?.length || episode.characters?.length) ? (
+                        <div className="mt-4 pt-3 border-t border-[var(--bd-border-color)] flex items-center gap-4">
+                          {episode.scenes && episode.scenes.length > 0 && (
+                            <span className="flex items-center gap-1 text-xs text-[var(--bd-text-muted)]">
+                              <Film className="h-3 w-3" />
+                              {episode.scenes.length} scenes
+                            </span>
+                          )}
+                          {episode.characters && episode.characters.length > 0 && (
+                            <span className="flex items-center gap-1 text-xs text-[var(--bd-text-muted)]">
+                              <Users className="h-3 w-3" />
+                              {episode.characters.length} characters
+                            </span>
+                          )}
+                        </div>
+                      ) : null}
+                      
+                      <div className="mt-3 flex items-center text-[var(--bd-cyan)] text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                        Edit Episode
+                        <ChevronRight className="h-4 w-4 ml-1" />
+                      </div>
+                    </Link>
+                  </CardContent>
+                </Card>
               );
             })}
           </div>
@@ -198,6 +245,69 @@ export default function EpisodesPage() {
               Create Episode
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Episode Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="bg-[var(--bd-bg-secondary)] border-[var(--bd-border-color)]">
+          <DialogHeader>
+            <DialogTitle className="text-white">Edit Episode</DialogTitle>
+          </DialogHeader>
+          {editingEpisode && (
+            <div className="space-y-4 pt-4">
+              <div>
+                <Label className="text-[var(--bd-text-secondary)]">Episode Title</Label>
+                <Input
+                  value={editingEpisode.title}
+                  onChange={(e) => setEditingEpisode({ ...editingEpisode, title: e.target.value })}
+                  className="bd-input mt-2"
+                  placeholder="e.g., The Great Hail Storm"
+                />
+              </div>
+              <div>
+                <Label className="text-[var(--bd-text-secondary)]">Description</Label>
+                <Textarea
+                  value={editingEpisode.description || ''}
+                  onChange={(e) => setEditingEpisode({ ...editingEpisode, description: e.target.value })}
+                  className="bd-input mt-2"
+                  placeholder="Brief description of the episode..."
+                />
+              </div>
+              <div>
+                <Label className="text-[var(--bd-text-secondary)]">Target Duration (seconds)</Label>
+                <Input
+                  type="number"
+                  min={10}
+                  max={300}
+                  value={editingEpisode.target_duration || 60}
+                  onChange={(e) => setEditingEpisode({ ...editingEpisode, target_duration: parseInt(e.target.value) })}
+                  className="bd-input mt-2"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleUpdate}
+                  disabled={!editingEpisode.title || updateEpisode.isPending}
+                  className="flex-1 btn-primary"
+                >
+                  {updateEpisode.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Pencil className="h-4 w-4 mr-2" />
+                  )}
+                  Save Changes
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditDialogOpen(false)}
+                  className="bd-input"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
