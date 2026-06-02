@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Loader2, Users, Mic, Trash2 } from 'lucide-react';
-import { useCharacters, useCreateCharacter, useDeleteCharacter } from '@/hooks/use-characters';
+import { Plus, Loader2, Users, Mic, Trash2, Pencil } from 'lucide-react';
+import { useCharacters, useCreateCharacter, useDeleteCharacter, useUpdateCharacter } from '@/hooks/use-characters';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -46,7 +46,10 @@ export default function CharactersPage() {
   const { data: characters, isLoading } = useCharacters();
   const createCharacter = useCreateCharacter();
   const deleteCharacter = useDeleteCharacter();
+  const updateCharacter = useUpdateCharacter();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingCharacter, setEditingCharacter] = useState<Character | null>(null);
   const [newCharacter, setNewCharacter] = useState({
     name: '',
     description: '',
@@ -65,6 +68,27 @@ export default function CharactersPage() {
       voice_name: '',
       personality_traits: [],
     });
+  };
+
+  const handleEdit = (character: Character) => {
+    setEditingCharacter(character);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingCharacter) return;
+    await updateCharacter.mutateAsync({
+      id: editingCharacter.id,
+      data: {
+        name: editingCharacter.name,
+        description: editingCharacter.description,
+        role: editingCharacter.role,
+        voice_name: editingCharacter.voice_name,
+        personality_traits: editingCharacter.personality_traits,
+      },
+    });
+    setIsEditDialogOpen(false);
+    setEditingCharacter(null);
   };
 
   return (
@@ -126,6 +150,14 @@ export default function CharactersPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      className="h-8 w-8 text-[var(--bd-text-muted)] hover:text-[var(--bd-cyan)]"
+                      onClick={() => handleEdit(character)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
                     <Button 
                       variant="ghost" 
                       size="icon"
@@ -236,6 +268,85 @@ export default function CharactersPage() {
               Create Character
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Character Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="bg-[var(--bd-bg-secondary)] border-[var(--bd-border-color)] max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-white">Edit Character</DialogTitle>
+          </DialogHeader>
+          {editingCharacter && (
+            <div className="space-y-4 pt-4">
+              <div>
+                <Label className="text-[var(--bd-text-secondary)]">Character Name</Label>
+                <Input
+                  value={editingCharacter.name}
+                  onChange={(e) => setEditingCharacter({ ...editingCharacter, name: e.target.value })}
+                  className="bd-input mt-2"
+                  placeholder="e.g., Brenda the Bird Dog"
+                />
+              </div>
+              <div>
+                <Label className="text-[var(--bd-text-secondary)]">Role</Label>
+                <Select
+                  value={editingCharacter.role || 'supporting'}
+                  onValueChange={(v) => setEditingCharacter({ ...editingCharacter, role: v as any })}
+                >
+                  <SelectTrigger className="bd-input mt-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[var(--bd-bg-secondary)] border-[var(--bd-border-color)]">
+                    <SelectItem value="protagonist">Protagonist</SelectItem>
+                    <SelectItem value="antagonist">Antagonist</SelectItem>
+                    <SelectItem value="supporting">Supporting</SelectItem>
+                    <SelectItem value="extra">Extra</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-[var(--bd-text-secondary)]">Description</Label>
+                <Textarea
+                  value={editingCharacter.description || ''}
+                  onChange={(e) => setEditingCharacter({ ...editingCharacter, description: e.target.value })}
+                  className="bd-input mt-2"
+                  placeholder="Character description, background, personality..."
+                  rows={3}
+                />
+              </div>
+              <div>
+                <Label className="text-[var(--bd-text-secondary)]">Voice Name (ElevenLabs)</Label>
+                <Input
+                  value={editingCharacter.voice_name || ''}
+                  onChange={(e) => setEditingCharacter({ ...editingCharacter, voice_name: e.target.value })}
+                  className="bd-input mt-2"
+                  placeholder="e.g., Rachel, Adam, Bella"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleUpdate}
+                  disabled={!editingCharacter.name || updateCharacter.isPending}
+                  className="flex-1 btn-primary"
+                >
+                  {updateCharacter.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Pencil className="h-4 w-4 mr-2" />
+                  )}
+                  Save Changes
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditDialogOpen(false)}
+                  className="bd-input"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

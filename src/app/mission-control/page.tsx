@@ -343,14 +343,18 @@ export default function MissionControlPage() {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[var(--bd-text-secondary)]">Model</Label>
-                  <Select defaultValue="gpt-4">
+                  <Select defaultValue="kimi-k2.5">
                     <SelectTrigger className="bd-input">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-[var(--bd-bg-secondary)] border-[var(--bd-border-color)]">
-                      <SelectItem value="gpt-4">GPT-4</SelectItem>
+                      <SelectItem value="kimi-k2.5">Kimi K2.5</SelectItem>
+                      <SelectItem value="kimi-k2.6">Kimi K2.6</SelectItem>
+                      <SelectItem value="kimi-k1.5">Kimi K1.5</SelectItem>
+                      <SelectItem value="gpt-4o">GPT-4o</SelectItem>
                       <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
                       <SelectItem value="claude-3-opus">Claude 3 Opus</SelectItem>
+                      <SelectItem value="claude-3-sonnet">Claude 3.5 Sonnet</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
